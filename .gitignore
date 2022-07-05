@@ -1,0 +1,4 @@
+usecase/EmieNodeDynamic
+usecase/emiewebapp
+rust-kafka-producer/target
+**/node_modules

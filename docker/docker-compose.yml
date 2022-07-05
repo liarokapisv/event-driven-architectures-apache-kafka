@@ -1,0 +1,79 @@
+version: "3.2"
+
+x-kafka: &kafka_template
+  image: bitnami/kafka:3.1
+  volumes:
+    - ./assets/jmx-exporter:/usr/share/jmx-exporter
+  environment: &kafka_environment
+    ALLOW_PLAINTEXT_LISTENER: "yes"
+    KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+    KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: >-
+      INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+    KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+    #KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+    KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 3
+    KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+    KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+    KAFKA_CFG_MIN_INSYNC_REPLICAS: 1
+    KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 2
+    KAFKA_CFG_LOG_DIRS: /tmp/kafka-logs
+    EXTRA_ARGS: -javaagent:/usr/share/jmx-exporter/jmx_prometheus_javaagent-0.16.1.jar=1234:/usr/share/jmx-exporter/kafka_broker.yml
+  depends_on:
+  - zookeeper
+
+services:
+  zookeeper:
+    image: bitnami/zookeeper:3
+    ports:
+      - 2181:2181
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+  kafka-0:
+    <<: *kafka_template
+    ports:
+    - 9092:9092
+    environment:
+      <<: *kafka_environment
+      KAFKA_CFG_BROKER_ID: 0
+      KAFKA_LISTENERS: >-
+        INTERNAL://:29092,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: >-
+        INTERNAL://kafka-0:29092,EXTERNAL://localhost:9092
+  kafka-1:
+    <<: *kafka_template
+    ports:
+    - 9093:9093
+    environment:
+      <<: *kafka_environment
+      KAFKA_CFG_BROKER_ID: 1
+      KAFKA_LISTENERS: >-
+        INTERNAL://:29092,EXTERNAL://:9093
+      KAFKA_ADVERTISED_LISTENERS: >-
+        INTERNAL://kafka-1:29092,EXTERNAL://localhost:9093
+  kafka-2:
+    <<: *kafka_template
+    ports:
+    - 9094:9094
+    environment:
+      <<: *kafka_environment
+      KAFKA_CFG_BROKER_ID: 2
+      KAFKA_LISTENERS: >-
+        INTERNAL://:29092,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: >-
+        INTERNAL://kafka-2:29092,EXTERNAL://localhost:9094
+  kowl:
+    image: quay.io/cloudhut/kowl:master-ab6caaa
+    entrypoint: /bin/sh
+    command: -c "echo \"$$KOWL_CONFIG_FILE\" > /tmp/config.yml; /app/kowl"
+    restart: on-failure
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      KOWL_CONFIG_FILE: |
+        kafka:
+          brokers: ["kafka-0:29092","kafka-1:29092","kafka-2:29092"]
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka-0
+      - kafka-1
+      - kafka-2

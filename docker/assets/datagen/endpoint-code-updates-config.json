@@ -1,0 +1,15 @@
+{
+  "name": "endpoint-code-updates",
+  "config": {
+    "connector.class": "io.confluent.kafka.connect.datagen.DatagenConnector",
+    "kafka.topic": "endpoint-code-updates",
+    "schema.filename": "/usr/share/datagen/endpoint-code-updates-schema.json",
+    "schema.keyfield": "endpoint",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+    "max.interval": 500,
+    "iterations": -1,
+    "tasks.max": "1"
+  }
+}
